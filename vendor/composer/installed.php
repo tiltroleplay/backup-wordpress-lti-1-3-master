@@ -1,0 +1,52 @@
+<?php return array(
+    'root' => array(
+        'name' => 'tresipunt/wordpress-lti-1-3',
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => '8abc98a4bee9abf6917038df831ab047cf9e97f0',
+        'type' => 'wordpress-plugin',
+        'install_path' => __DIR__ . '/../../',
+        'aliases' => array(),
+        'dev' => true,
+    ),
+    'versions' => array(
+        'fproject/php-jwt' => array(
+            'pretty_version' => '4.0.5',
+            'version' => '4.0.5.0',
+            'reference' => '91047b202bbe7d966e8fce67ab16ebca8bdcb6b7',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../fproject/php-jwt',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'imsglobal/lti-1p3-tool' => array(
+            'pretty_version' => 'dev-master',
+            'version' => 'dev-master',
+            'reference' => '3a192de99f3783d76caea462b0d04db28569c123',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../imsglobal/lti-1p3-tool',
+            'aliases' => array(
+                0 => '9999999-dev',
+            ),
+            'dev_requirement' => false,
+        ),
+        'phpseclib/phpseclib' => array(
+            'pretty_version' => '2.0.39',
+            'version' => '2.0.39.0',
+            'reference' => 'f3a0e2b715c40cf1fd270d444901b63311725d63',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../phpseclib/phpseclib',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+        'tresipunt/wordpress-lti-1-3' => array(
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => '8abc98a4bee9abf6917038df831ab047cf9e97f0',
+            'type' => 'wordpress-plugin',
+            'install_path' => __DIR__ . '/../../',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
+    ),
+);
