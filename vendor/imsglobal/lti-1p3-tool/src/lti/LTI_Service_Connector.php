@@ -98,7 +98,7 @@ class LTI_Service_Connector
             . "&scope=" . implode(' ', $scopes);  // raw space
 
         $ch = curl_init();
-        curl_setopt($ch, CURLINFO_HEADER_OUT,true);
+        curl_setopt($ch, CURLINFO_HEADER_OUT, true);
         curl_setopt_array($ch, [
             CURLOPT_URL => $auth_url,
             CURLOPT_POST => true,
@@ -119,7 +119,7 @@ class LTI_Service_Connector
             return false;
         }
         $info = curl_getinfo($ch);
-        error_log("Request headers sent: ".print_r($info,true));
+        error_log("Request headers sent: " . print_r($info, true));
 
         $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
@@ -536,7 +536,13 @@ class LTI_Service_Connector
         error_log("make_service_request response: " . $response);
 
         $decoded = json_decode($response, true);
-        return $decoded ? $decoded : $response;
+
+        // return $decoded ? $decoded : $response;
+
+        return [
+            'success' => ($http_status >= 200 && $http_status < 300),
+            'http_code' => $http_status
+        ];
     }
 
 

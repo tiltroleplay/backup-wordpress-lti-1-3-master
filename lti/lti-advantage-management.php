@@ -114,7 +114,7 @@ class LTIAdvantageManagement
 
             add_action('lti_send_grade', array($this, 'save_internal_grade'), 10, 3);
 
-
+            add_filter('lti_send_grade_by_filter', array($this, 'save_internal_grade_by_filter'), 10, 3);
 
         }
 
@@ -1081,7 +1081,7 @@ class LTIAdvantageManagement
     //     return $ret;
     // }
 
-    
+
 
 
     // Original
@@ -1093,7 +1093,7 @@ class LTIAdvantageManagement
             update_option(self::$USER_PREFIX_OPTION_COMMENT . $userid, $comment);
             $lti_user_id = get_user_meta($userid, self::$LTI_METAKEY_USER_ID, true);
 
-            error_log('lti_user_id'. $lti_user_id);
+            error_log('lti_user_id' . $lti_user_id);
             $launch = get_user_meta($userid, 'lti_launch_' . get_current_blog_id(), true);
             if ($lti_user_id && $launch && $launch->has_ags()) {
 
@@ -1107,12 +1107,36 @@ class LTIAdvantageManagement
                     ->set_comment($comment)
                     ->set_user_id($lti_user_id);
 
-                $success = $grades->put_grade($score, null);
+                $result = $grades->put_grade($score, null);
 
-                $ret['result'] = $success;
-                if (!$success) {
-                    $ret['error'] = __('Error storing grade on platform', self::$DOMAIN);
-                }
+                error_log('result ' . print_r($result, true));
+
+                    switch ($result['http_code']) {
+                        case 200:
+                            $ret['result'] = true;
+                            $ret['message'] = __('Grade successfully stored on platform', self::$DOMAIN);
+                            error_log('Grade successfully stored on platform');
+                            break;
+                        case 400:
+                            $ret['message'] = __('Administrators and non-student roles cannot receive grades', self::$DOMAIN);
+                            error_log('400 admin grade being sent');
+                            break;
+                        case 403:
+                            $ret['result'] = false;
+                            $ret['message'] = __('Moodle rejected the grade submission (permission or scope issue)', self::$DOMAIN);
+                            error_log('Moodle rejected the grade submission (permission or scope issue');
+                            break;
+
+                        default:
+                            $ret['result'] = false;
+                            $ret['message'] = sprintf(
+                                __('Unexpected error (HTTP %d)', self::$DOMAIN),
+                                $result['http_code']
+                            );
+                            break;
+                    }
+
+                    $ret['result'] = $result;
             } else {
                 $ret['result'] = false;
                 $ret['error'] = __('Don\'t allow to send back grades. Review LMS configuraton', self::$DOMAIN);
@@ -1123,9 +1147,79 @@ class LTIAdvantageManagement
             $ret['error'] = __('Missing user id or grade', self::$DOMAIN);
         }
 
+        error_log('returning array ' . print_r($ret, true));
+
         return $ret;
     }
-    
+
+    function save_internal_grade_by_filter($userid, $grade, $comment)
+    {
+
+        $ret = array('result' => false, 'error' => false);
+        if ($userid !== false && $grade !== false) {
+            update_option(self::$USER_PREFIX_OPTION . $userid, $grade);
+            update_option(self::$USER_PREFIX_OPTION_COMMENT . $userid, $comment);
+            $lti_user_id = get_user_meta($userid, self::$LTI_METAKEY_USER_ID, true);
+
+            error_log('lti_user_id' . $lti_user_id);
+            $launch = get_user_meta($userid, 'lti_launch_' . get_current_blog_id(), true);
+            if ($lti_user_id && $launch && $launch->has_ags()) {
+
+                $grades = $launch->get_ags();
+                $score = LTI\LTI_Grade::new()
+                    ->set_score_given($grade)
+                    ->set_score_maximum(self::$MAX_GRADE)
+                    ->set_timestamp(date(DateTime::ATOM))
+                    ->set_activity_progress(self::$ACTIVITY_PROGRESS)
+                    ->set_grading_progress(self::$GRADING_PROGRESS)
+                    ->set_comment($comment)
+                    ->set_user_id($lti_user_id);
+
+                $result = $grades->put_grade($score, null);
+
+                error_log('result ' . print_r($result, true));
+
+                    switch ($result['http_code']) {
+                        case 200:
+                            $ret['result'] = true;
+                            $ret['message'] = __('Grade successfully stored on platform', self::$DOMAIN);
+                            error_log('Grade successfully stored on platform');
+                            break;
+                        case 400:
+                            $ret['message'] = __('Administrators and non-student roles cannot receive grades', self::$DOMAIN);
+                            error_log('400 admin grade being sent');
+                            break;
+                        case 403:
+                            $ret['result'] = false;
+                            $ret['message'] = __('Moodle rejected the grade submission (permission or scope issue)', self::$DOMAIN);
+                            error_log('Moodle rejected the grade submission (permission or scope issue');
+                            break;
+
+                        default:
+                            $ret['result'] = false;
+                            $ret['message'] = sprintf(
+                                __('Unexpected error (HTTP %d)', self::$DOMAIN),
+                                $result['http_code']
+                            );
+                            break;
+                    }
+
+                    $ret['success'] = $result['success'];
+            } else {
+                $ret['result'] = false;
+                $ret['error'] = __('Don\'t allow to send back grades. Review LMS configuraton', self::$DOMAIN);
+            }
+
+        } else {
+            $ret['result'] = false;
+            $ret['error'] = __('Missing user id or grade', self::$DOMAIN);
+        }
+
+        error_log('returning array ' . print_r($ret, true));
+
+        return $ret;
+    }
+
     // function save_internal_grade($userid, $grade, $comment)
     // {
     //     $ret = ['result' => false, 'error' => false];
