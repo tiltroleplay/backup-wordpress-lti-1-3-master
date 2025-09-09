@@ -1109,7 +1109,7 @@ class LTIAdvantageManagement
 
                 $result = $grades->put_grade($score, null);
 
-                error_log('result ' . print_r($result, true));
+                // error_log('result ' . print_r($result, true));
 
                     switch ($result['http_code']) {
                         case 200:
@@ -1147,7 +1147,7 @@ class LTIAdvantageManagement
             $ret['error'] = __('Missing user id or grade', self::$DOMAIN);
         }
 
-        error_log('returning array ' . print_r($ret, true));
+        // error_log('returning array ' . print_r($ret, true));
 
         return $ret;
     }
@@ -1177,7 +1177,7 @@ class LTIAdvantageManagement
 
                 $result = $grades->put_grade($score, null);
 
-                error_log('result ' . print_r($result, true));
+                // error_log('result ' . print_r($result, true));
 
                     switch ($result['http_code']) {
                         case 200:
@@ -1203,7 +1203,7 @@ class LTIAdvantageManagement
                             );
                             break;
                     }
-
+                    $ret['http_code'] = $result['http_code'];
                     $ret['success'] = $result['success'];
             } else {
                 $ret['result'] = false;
@@ -1215,7 +1215,7 @@ class LTIAdvantageManagement
             $ret['error'] = __('Missing user id or grade', self::$DOMAIN);
         }
 
-        error_log('returning array ' . print_r($ret, true));
+        // error_log('returning array ' . print_r($ret, true));
 
         return $ret;
     }
