@@ -423,7 +423,7 @@ class LTI_Message_Launch {
         $options = [
             'http' => [
                 'method' => 'GET',
-                'header' => "User-Agent: PHP\r\n"
+                'header' => "User-Agent: WordPress-LTI-Tool/1.0 (+https://tiltroleplay.com)\r\n"
             ]
         ];
 
@@ -431,7 +431,7 @@ class LTI_Message_Launch {
 
         $public_key_set = json_decode(file_get_contents($key_set_url, false, $context ), true);
 
-
+        error_log("get_public_key: ". print_r($options,true));
 
         if (empty($public_key_set)) {
 
