@@ -423,7 +423,7 @@ class LTI_Message_Launch {
         $options = [
             'http' => [
                 'method' => 'GET',
-                'header' => "User-Agent: WordPress-LTI-Tool/1.0 (+https://tiltroleplay.com)\r\n"
+                'header' => "User-Agent: WordPress-LTI-Tool/1.0 (Tilt Roleplay LTI Plugin; https://tiltroleplay.com)\r\n"
             ]
         ];
 

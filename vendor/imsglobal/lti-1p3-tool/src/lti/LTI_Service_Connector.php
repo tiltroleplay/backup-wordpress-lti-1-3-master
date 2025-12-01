@@ -107,7 +107,7 @@ class LTI_Service_Connector
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/x-www-form-urlencoded',
-                'User-Agent: WordPress-LTI-Tool/1.0 (+https://tiltroleplay.com)',
+                'User-Agent: WordPress-LTI-Tool/1.0 (Tilt Roleplay LTI Plugin; https://tiltroleplay.com)',
                 'Accept: application/json '
             ]
         ]);
@@ -484,7 +484,7 @@ class LTI_Service_Connector
         // 2. Build headers
         $headers = [
             'Authorization: Bearer ' . $token,
-            'User-Agent: WordPress-LTI-Tool/1.0 (+https://tiltroleplay.com)'
+            'User-Agent: WordPress-LTI-Tool/1.0 (Tilt Roleplay LTI Plugin; https://tiltroleplay.com)'
         ];
         if ($content_type) {
             $headers[] = 'Content-Type: ' . $content_type;
