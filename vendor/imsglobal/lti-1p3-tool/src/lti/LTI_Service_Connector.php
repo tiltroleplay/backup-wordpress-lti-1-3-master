@@ -522,7 +522,7 @@ class LTI_Service_Connector
                 break;
         }
 
-        error_log("Headers sent: ", print_r($headers,true));
+        error_log("Headers sent: ". print_r($headers,true));
         // 4. Execute and debug
         $response = curl_exec($ch);
         $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
