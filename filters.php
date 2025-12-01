@@ -35,3 +35,12 @@ function lti_filter_get_email($email, $userkey)
     }
     return $email;
 }
+
+add_filter('http_request_args', function($args, $url){
+    $args['headers']['User-Agent'] = ' WordPress-LTI-Tool/1.0 (+https://tiltroleplay.com)';
+
+    error_log("UserAgent Added: ". print_r($args,true));
+
+    
+    return $args;
+}, 10,2);
