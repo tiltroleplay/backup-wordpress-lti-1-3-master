@@ -107,7 +107,7 @@ class LTI_Service_Connector
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/x-www-form-urlencoded',
-                'User-Agent: Mozilla/5.0',
+                'User-Agent: WordPress-LTI-Tool/1.0 (+https://tiltroleplay.com)',
                 'Accept: application/json '
             ]
         ]);
@@ -484,6 +484,7 @@ class LTI_Service_Connector
         // 2. Build headers
         $headers = [
             'Authorization: Bearer ' . $token,
+            'User-Agent: WordPress-LTI-Tool/1.0 (+https://tiltroleplay.com)'
         ];
         if ($content_type) {
             $headers[] = 'Content-Type: ' . $content_type;
@@ -521,6 +522,7 @@ class LTI_Service_Connector
                 break;
         }
 
+        error_log("Headers sent: ", print_r($headers,true));
         // 4. Execute and debug
         $response = curl_exec($ch);
         $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
