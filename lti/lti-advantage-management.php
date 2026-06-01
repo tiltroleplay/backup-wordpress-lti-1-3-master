@@ -75,8 +75,14 @@ class LTIAdvantageManagement
 
     public function __construct()
     {
+        error_log("[LTI GRADE] LTIAdvantageManagement constructor called");
+        error_log("[LTI GRADE] Current user ID: " . get_current_user_id());
+        error_log("[LTI GRADE] Current blog ID: " . get_current_blog_id());
 
         $launch = get_user_meta(get_current_user_id(), 'lti_launch_' . get_current_blog_id(), true);
+
+        error_log("[LTI GRADE] Launch object type: " . (is_object($launch) ? get_class($launch) : gettype($launch)));
+        error_log("[LTI GRADE] Launch object exists: " . ($launch ? 'yes' : 'no'));
 
         if ($launch) {
 
@@ -1087,14 +1093,20 @@ class LTIAdvantageManagement
     // Original
     function save_internal_grade($userid, $grade, $comment)
     {
+        error_log("[LTI GRADE] ========== save_internal_grade called ==========");
+        error_log("[LTI GRADE] userid: $userid, grade: $grade, comment: $comment");
+
         $ret = array('result' => false, 'error' => false);
         if ($userid !== false && $grade !== false) {
             update_option(self::$USER_PREFIX_OPTION . $userid, $grade);
             update_option(self::$USER_PREFIX_OPTION_COMMENT . $userid, $comment);
             $lti_user_id = get_user_meta($userid, self::$LTI_METAKEY_USER_ID, true);
 
-            error_log('lti_user_id' . $lti_user_id);
+            error_log("[LTI GRADE] lti_user_id: " . $lti_user_id);
             $launch = get_user_meta($userid, 'lti_launch_' . get_current_blog_id(), true);
+            error_log("[LTI GRADE] Launch retrieved, type: " . (is_object($launch) ? get_class($launch) : gettype($launch)));
+            error_log("[LTI GRADE] Launch has_ags check: " . ($launch && method_exists($launch, 'has_ags') ? ($launch->has_ags() ? 'yes' : 'no') : 'method not available'));
+
             if ($lti_user_id && $launch && $launch->has_ags()) {
 
                 $grades = $launch->get_ags();
