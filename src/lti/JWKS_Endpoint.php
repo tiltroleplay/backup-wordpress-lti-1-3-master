@@ -15,8 +15,20 @@ class JWKS_Endpoint {
         return new JWKS_Endpoint($keys);
     }
 
+    /**
+     * @deprecated Use from_registration() instead. This method may return the wrong
+     * registration if multiple tools share the same issuer.
+     */
     public static function from_issuer(Database $database, string $issuer): self {
         $registration = $database->find_registration_by_issuer($issuer);
+        return new JWKS_Endpoint([$registration->get_kid() => $registration->get_tool_private_key()]);
+    }
+
+    /**
+     * Create JWKS endpoint from issuer and client_id (preferred method)
+     */
+    public static function from_issuer_and_client_id(Database $database, string $issuer, string $client_id): self {
+        $registration = $database->find_registration_by_issuer_and_client_id($issuer, $client_id);
         return new JWKS_Endpoint([$registration->get_kid() => $registration->get_tool_private_key()]);
     }
 

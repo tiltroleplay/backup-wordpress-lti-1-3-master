@@ -108,7 +108,17 @@ class LTI_OIDC_Login {
         }
 
         // Fetch Registration Details.
-        $registration = $this->db->find_registration_by_issuer($request['iss']);
+        // Per LTI 1.3 spec, client_id may be included in OIDC initiation request
+        // when multiple tools are registered with the same issuer
+        if (!empty($request['client_id'])) {
+            $registration = $this->db->find_registration_by_issuer_and_client_id(
+                $request['iss'],
+                $request['client_id']
+            );
+        } else {
+            // Fallback to issuer-only lookup for backwards compatibility
+            $registration = $this->db->find_registration_by_issuer($request['iss']);
+        }
 
         // Check we got something.
         if (empty($registration)) {

@@ -205,15 +205,16 @@ class LTI_Message_Launch {
     }
 
     private function validate_registration() {
-        $this->registration = $this->db->find_registration_by_issuer($this->jwt['body']['iss']);
+        // Extract client_id from JWT (can be string or array per LTI 1.3 spec)
+        $client_id = is_array($this->jwt['body']['aud']) ? $this->jwt['body']['aud'][0] : $this->jwt['body']['aud'];
+        $issuer = $this->jwt['body']['iss'];
+
+        // Look up registration by both issuer and client_id to properly support
+        // multiple tools from the same LMS/issuer
+        $this->registration = $this->db->find_registration_by_issuer_and_client_id($issuer, $client_id);
 
         if (empty($this->registration)) {
-            throw new LTI_Exception("Registration not found.", 1);
-        }
-
-        $client_id = is_array($this->jwt['body']['aud']) ? $this->jwt['body']['aud'][0] : $this->jwt['body']['aud'];
-        if ($client_id !== $this->registration->get_client_id()) {
-            throw new LTI_Exception("Client id not registered for this issuer", 1);
+            throw new LTI_Exception("Registration not found for issuer: $issuer, client_id: $client_id", 1);
         }
 
         return $this;
