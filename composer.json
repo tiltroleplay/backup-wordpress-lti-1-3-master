@@ -10,8 +10,7 @@
   ],
   "require": {
     "php": ">=8.0",
-    "firebase/php-jwt": "^7.0",
-    "phpseclib/phpseclib": "^3.0"
+    "firebase/php-jwt": "^7.0"
   },
   "autoload": {
     "psr-4": {

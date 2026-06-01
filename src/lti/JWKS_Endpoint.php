@@ -1,8 +1,6 @@
 <?php
 namespace IMSGlobal\LTI;
 
-use phpseclib3\Crypt\RSA;
-use phpseclib3\Crypt\PublicKeyLoader;
 use Firebase\JWT\JWT;
 
 class JWKS_Endpoint {
@@ -30,16 +28,17 @@ class JWKS_Endpoint {
         $jwks = [];
         foreach ($this->keys as $kid => $private_key) {
             try {
-                // Load the private key using phpseclib3
-                $key = PublicKeyLoader::load($private_key);
+                // Load private key using native PHP OpenSSL
+                $key_resource = openssl_pkey_get_private($private_key);
+                if (!$key_resource) {
+                    error_log("[LTI JWKS] Failed to load private key for kid: $kid");
+                    continue;
+                }
 
-                // Get the public key
-                $publicKey = $key->getPublicKey();
-
-                // Convert to array format to extract n and e
-                $keyDetails = openssl_pkey_get_details(openssl_pkey_get_public($publicKey->toString('PKCS8')));
-
-                if (!isset($keyDetails['rsa'])) {
+                // Get key details
+                $key_details = openssl_pkey_get_details($key_resource);
+                if (!$key_details || !isset($key_details['rsa'])) {
+                    error_log("[LTI JWKS] Failed to get key details for kid: $kid");
                     continue;
                 }
 
@@ -47,8 +46,8 @@ class JWKS_Endpoint {
                     'kty' => 'RSA',
                     'alg' => 'RS256',
                     'use' => 'sig',
-                    'e' => JWT::urlsafeB64Encode($keyDetails['rsa']['e']),
-                    'n' => JWT::urlsafeB64Encode($keyDetails['rsa']['n']),
+                    'e' => JWT::urlsafeB64Encode($key_details['rsa']['e']),
+                    'n' => JWT::urlsafeB64Encode($key_details['rsa']['n']),
                     'kid' => $kid,
                 ];
 
