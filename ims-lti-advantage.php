@@ -134,10 +134,10 @@ function lti_client_id_admin()
         echo "<h3>" . __('Current Tool Settings', 'wordpress-mu-ltiadvantage') . "</h3>";
         lti_show_launch();
         echo "<h3>" . __('Search', 'wordpress-mu-ltiadvantage') . "</h3>";
-        $escaped_search = addslashes($search_str);
-        $rows = $wpdb->get_results("SELECT * FROM " . lti_13_get_table() . " WHERE client_id LIKE '%{$escaped_search}%' ");
+        $like_search = '%' . $wpdb->esc_like($search_str) . '%';
+        $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM " . lti_13_get_table() . " WHERE client_id LIKE %s", $like_search));
         lti_listing($rows,
-            empty($escaped_search) ? '' : sprintf(__("Searching for \"%s\"", 'wordpress-mu-ltiadvantage'),
+            empty($search_str) ? '' : sprintf(__("Searching for \"%s\"", 'wordpress-mu-ltiadvantage'),
                 esc_html($search_str)));
         echo '<form method="POST">';
         wp_nonce_field('lti');

@@ -8,15 +8,15 @@ class LTI_Service_Connector
 {
     const NEXT_PAGE_REGEX = "/^Link:.*<([^>]*)>; ?rel=\"next\"/i";
 
-    private $registration;
-    private $access_tokens = [];
+    private LTI_Registration $registration;
+    private array $access_tokens = [];
 
     public function __construct(LTI_Registration $registration)
     {
         $this->registration = $registration;
     }
 
-    public function get_access_token($scopes)
+    public function get_access_token(array|string $scopes): string|false
     {
         // Defensive: ensure scopes is a flat array of strings
         if (empty($scopes)) {
@@ -38,7 +38,7 @@ class LTI_Service_Connector
         }
 
         $client_id = $this->registration->get_client_id();
-        $auth_url = rtrim(str_replace('\\', '', $this->registration->get_auth_token_url()), '/');
+        $auth_url = rtrim(str_replace('\\', '', $this->registration->get_auth_token_url() ?? ''), '/');
 
         $jwt_claim = [
             "iss" => $client_id,
@@ -91,8 +91,13 @@ class LTI_Service_Connector
         return $this->access_tokens[$scope_key];
     }
 
-    public function make_service_request($scopes, $method, $url, $body = null, $content_type = null)
-    {
+    public function make_service_request(
+        array|string $scopes,
+        string $method,
+        string $url,
+        array|string|null $body = null,
+        ?string $content_type = null
+    ): array|false {
         // 1. Get access token
         $token = $this->get_access_token($scopes);
         if (!$token) {

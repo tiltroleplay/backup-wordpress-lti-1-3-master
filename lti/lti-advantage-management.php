@@ -318,11 +318,17 @@ class LTIAdvantageManagement
 
 
 
-        $type = isset($_GET['type']) ? $_GET['type'] : '';
+        $type = isset($_GET['type']) ? sanitize_key($_GET['type']) : '';
 
         $user_id = isset($_GET['user_id']) ? intval($_GET['user_id'], 10) : 0;
 
-
+        // Verify user exists and belongs to this blog
+        if ($user_id > 0) {
+            $user = get_userdata($user_id);
+            if (!$user || (is_multisite() && !is_user_member_of_blog($user_id, get_current_blog_id()))) {
+                $user_id = 0;
+            }
+        }
 
         if (empty($type) || $user_id == 0) {
 
@@ -381,7 +387,7 @@ class LTIAdvantageManagement
 
             <div id="icon-users" class="icon32"></div>
 
-            <h2><?php echo __($type, self::$DOMAIN) . ' ' . get_userdata($user_id)->display_name; ?> </h2>
+            <h2><?php echo esc_html(__($type, self::$DOMAIN) . ' ' . get_userdata($user_id)->display_name); ?> </h2>
 
             <?php
 

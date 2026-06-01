@@ -128,17 +128,9 @@
 
 
 /**
- * @ignore Create "Standard PHP Library" compatible exception classes if the SPL extension isn't available.
- * @ignore The SPL extension exists in PHP 5.0, but is only installed by default since PHP 5.1.
+ * SPL exception classes (LogicException, InvalidArgumentException) are available
+ * since PHP 5.1 and required for PHP 8.0+. No polyfill needed.
  */
-//if (!extension_loaded('SPL')) { 
-  if (!class_exists('LogicException')) {
-    eval('class LogicException extends Exception {};');
-  }
-  if (!class_exists('InvalidArgumentException')) {
-    eval('class InvalidArgumentException extends LogicException {};');
-  }
-//}
 
 define("CONFIGVALUE_HIGH_PRECEDENCE_LOCATION", "IncludeBefore");
 define("CONFIGVALUE_LOW_PRECEDENCE_LOCATION", "IncludeAfter");
@@ -1030,7 +1022,9 @@ class Properties_Section_Property_WP implements Properties_ISection_WP {
    * @return string
    */
   protected static function escape($s, $escape_space) {
-    $result = preg_replace('/([\\s=:#!\\\\]|[^\\x20-\\x7e])/e', 'self::_escapeChar("\\1", $escape_space)', $s);
+    $result = preg_replace_callback('/([\\s=:#!\\\\]|[^\\x20-\\x7e])/', function($matches) use ($escape_space) {
+        return self::_escapeChar($matches[1], $escape_space);
+    }, $s);
     // If the first character of a string is a space then always escape it, even if $escape_space is false.
     if (!$escape_space && strlen($result)) {
       if (substr($result,0,1) === ' ') {

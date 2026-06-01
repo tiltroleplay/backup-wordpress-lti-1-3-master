@@ -3,17 +3,17 @@ namespace IMSGlobal\LTI;
 
 class LTI_Deployment {
 
-    private $deployment_id;
+    private ?string $deployment_id = null;
 
-    public static function new() {
+    public static function new(): self {
         return new LTI_Deployment();
     }
 
-    public function get_deployment_id() {
+    public function get_deployment_id(): ?string {
         return $this->deployment_id;
     }
 
-    public function set_deployment_id($deployment_id) {
+    public function set_deployment_id(string $deployment_id): self {
         $this->deployment_id = $deployment_id;
         return $this;
     }

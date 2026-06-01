@@ -257,15 +257,23 @@ class LTI_Grade_Table extends WP_List_Table
         // Set defaults
         $orderby = 'student';
         $order = 'asc';
-        // If orderby is set, use this as the sort column
-        if (!empty($_GET['orderby'])) {
-            $orderby = $_GET['orderby'];
+
+        // Whitelist allowed sortable columns
+        $sortable_columns = array_keys($this->get_sortable_columns());
+        if (!empty($_GET['orderby']) && in_array($_GET['orderby'], $sortable_columns, true)) {
+            $orderby = sanitize_key($_GET['orderby']);
         }
-        // If order is set use this as the order
-        if (!empty($_GET['order'])) {
-            $order = $_GET['order'];
+
+        // Only allow asc or desc
+        if (!empty($_GET['order']) && in_array(strtolower($_GET['order']), ['asc', 'desc'], true)) {
+            $order = strtolower($_GET['order']);
         }
-        $result = strcmp($a[$orderby], $b[$orderby]);
+
+        // Ensure the key exists in both arrays
+        $val_a = isset($a[$orderby]) ? $a[$orderby] : '';
+        $val_b = isset($b[$orderby]) ? $b[$orderby] : '';
+
+        $result = strcmp($val_a, $val_b);
         if ($order === 'asc') {
             return $result;
         }
