@@ -12,8 +12,21 @@ require_once ABSPATH . '/wp-settings.php';
 
 use \IMSGlobal\LTI;
 
-$launch = LTI\LTI_Message_Launch::new(new WordPressLTI_Database())
-    ->validate();
+// LTI Launch entry point logging
+error_log("[LTI LAUNCH] ========================================");
+error_log("[LTI LAUNCH] Launch initiated at " . date('Y-m-d H:i:s'));
+error_log("[LTI LAUNCH] Request method: " . $_SERVER['REQUEST_METHOD']);
+error_log("[LTI LAUNCH] User agent: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'unknown'));
+
+try {
+    $launch = LTI\LTI_Message_Launch::new(new WordPressLTI_Database())
+        ->validate();
+    error_log("[LTI LAUNCH] Validation successful, launch_id: " . $launch->get_launch_id());
+} catch (Exception $e) {
+    error_log("[LTI LAUNCH] ERROR: Launch validation failed - " . $e->getMessage());
+    error_log("[LTI LAUNCH] Stack trace: " . $e->getTraceAsString());
+    throw $e;
+}
 
 if ($launch->is_deep_link_launch()) {
     // TODO prepare Deeplink flow

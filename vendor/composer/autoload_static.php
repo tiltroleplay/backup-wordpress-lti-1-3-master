@@ -13,7 +13,11 @@ class ComposerStaticInit56d213754411a9b969c66e6d3310519b
     public static $prefixLengthsPsr4 = array (
         'p' => 
         array (
-            'phpseclib\\' => 10,
+            'phpseclib3\\' => 11,
+        ),
+        'P' => 
+        array (
+            'ParagonIE\\ConstantTime\\' => 23,
         ),
         'I' => 
         array (
@@ -26,9 +30,13 @@ class ComposerStaticInit56d213754411a9b969c66e6d3310519b
     );
 
     public static $prefixDirsPsr4 = array (
-        'phpseclib\\' => 
+        'phpseclib3\\' => 
         array (
             0 => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib',
+        ),
+        'ParagonIE\\ConstantTime\\' => 
+        array (
+            0 => __DIR__ . '/..' . '/paragonie/constant_time_encoding/src',
         ),
         'IMSGlobal\\LTI\\' => 
         array (
@@ -36,7 +44,7 @@ class ComposerStaticInit56d213754411a9b969c66e6d3310519b
         ),
         'Firebase\\JWT\\' => 
         array (
-            0 => __DIR__ . '/..' . '/fproject/php-jwt/src',
+            0 => __DIR__ . '/..' . '/firebase/php-jwt/src',
         ),
     );
 
