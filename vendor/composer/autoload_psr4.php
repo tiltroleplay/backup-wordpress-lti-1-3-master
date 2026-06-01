@@ -8,6 +8,6 @@ $baseDir = dirname($vendorDir);
 return array(
     'phpseclib3\\' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
     'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
-    'IMSGlobal\\LTI\\' => array($vendorDir . '/imsglobal/lti-1p3-tool/src/lti'),
+    'IMSGlobal\\LTI\\' => array($baseDir . '/src/lti'),
     'Firebase\\JWT\\' => array($vendorDir . '/firebase/php-jwt/src'),
 );

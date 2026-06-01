@@ -40,7 +40,7 @@ class ComposerStaticInit56d213754411a9b969c66e6d3310519b
         ),
         'IMSGlobal\\LTI\\' => 
         array (
-            0 => __DIR__ . '/..' . '/imsglobal/lti-1p3-tool/src/lti',
+            0 => __DIR__ . '/../..' . '/src/lti',
         ),
         'Firebase\\JWT\\' => 
         array (

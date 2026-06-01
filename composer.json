@@ -15,7 +15,7 @@
   },
   "autoload": {
     "psr-4": {
-      "IMSGlobal\\LTI\\": "vendor/imsglobal/lti-1p3-tool/src/lti"
+      "IMSGlobal\\LTI\\": "src/lti"
     }
   }
 }
