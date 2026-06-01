@@ -12,8 +12,6 @@ class LTI_Assignments_Grades_Service {
     }
 
     public function put_grade(LTI_Grade $grade, LTI_Lineitem $lineitem = null) {
-        error_log("AGS service_data scope: " . print_r($this->service_data['scope'], true));
-        error_log("AGS lineitem URL: " . $this->service_data['lineitem']);
         if (!in_array("https://purl.imsglobal.org/spec/lti-ags/scope/score", $this->service_data['scope'])) {
             throw new LTI_Exception('Missing required scope', 1);
         }
