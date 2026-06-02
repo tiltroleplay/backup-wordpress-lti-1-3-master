@@ -258,7 +258,6 @@ function lti_render_copy_button(string $target_id): void {
  */
 function lti_render_search_section(): void {
     global $wpdb;
-
     // Get all tools (search disabled)
     $rows = $wpdb->get_results("SELECT * FROM " . lti_13_get_table());
 
