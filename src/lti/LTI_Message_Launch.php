@@ -136,15 +136,29 @@ class LTI_Message_Launch {
             return $this->registration; // Fallback to cached
         }
 
-        // Create fresh database instance (needed because $this->db may be null after unserialization)
-        if (class_exists('WordPressLTI_Database')) {
-            $db = new \WordPressLTI_Database();
-            $fresh_registration = $db->find_registration_by_issuer_and_client_id($issuer, $client_id);
+        // Ensure the database class is loaded
+        $db_file = dirname(__DIR__, 2) . '/lti/wordpresslti_database.php';
+        if (file_exists($db_file) && !class_exists('WordPressLTI_Database', false)) {
+            require_once $db_file;
+        }
 
-            if ($fresh_registration) {
-                error_log("[LTI] Using fresh registration for client_id=$client_id");
-                return $fresh_registration;
+        // Create fresh database instance (needed because $this->db may be null after unserialization)
+        if (class_exists('WordPressLTI_Database', false)) {
+            try {
+                $db = new \WordPressLTI_Database();
+                $fresh_registration = $db->find_registration_by_issuer_and_client_id($issuer, $client_id);
+
+                if ($fresh_registration) {
+                    error_log("[LTI] Using fresh registration for client_id=$client_id, token_url=" . $fresh_registration->get_auth_token_url());
+                    return $fresh_registration;
+                } else {
+                    error_log("[LTI] Fresh registration not found for issuer=$issuer, client_id=$client_id");
+                }
+            } catch (\Exception $e) {
+                error_log("[LTI] Fresh registration lookup error: " . $e->getMessage());
             }
+        } else {
+            error_log("[LTI] WordPressLTI_Database class not found, file exists: " . (file_exists($db_file) ? 'yes' : 'no'));
         }
 
         error_log("[LTI] Fresh registration lookup failed, using cached registration");
