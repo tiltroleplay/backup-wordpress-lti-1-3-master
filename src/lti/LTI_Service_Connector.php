@@ -64,6 +64,10 @@ class LTI_Service_Connector
             . "&client_assertion=" . $jwt
             . "&scope=" . implode(' ', $scopes);
 
+        error_log("[LTI AGS] Requesting token from: $auth_url");
+        error_log("[LTI AGS] Client ID: $client_id");
+        error_log("[LTI AGS] Scopes: " . implode(' ', $scopes));
+
         $ch = curl_init();
         curl_setopt($ch, CURLINFO_HEADER_OUT, true);
         curl_setopt_array($ch, [
@@ -75,25 +79,37 @@ class LTI_Service_Connector
                 'Content-Type: application/x-www-form-urlencoded',
                 'User-Agent: ' . $this->get_user_agent(),
                 'Accept: application/json'
-            ]
+            ],
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_TIMEOUT => 30,
+            CURLOPT_VERBOSE => false
         ]);
 
         $response = curl_exec($ch);
-        if ($response === false) {
-            error_log("[LTI AGS] Token request failed: " . curl_error($ch));
+        $curl_errno = curl_errno($ch);
+        $curl_error = curl_error($ch);
+        $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if ($response === false || $curl_errno !== 0) {
+            error_log("[LTI AGS] Token request CURL failed - Error #$curl_errno: $curl_error");
+            error_log("[LTI AGS] Token request HTTP status: $http_status");
             curl_close($ch);
             return false;
         }
 
-        $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
+
+        error_log("[LTI AGS] Token response HTTP: $http_status");
 
         $token_data = json_decode($response, true);
 
         if (!isset($token_data['access_token'])) {
-            error_log("[LTI AGS] Token request failed with HTTP $http_status");
+            error_log("[LTI AGS] Token request failed with HTTP $http_status - Response: " . substr($response, 0, 500));
             return false;
         }
+
+        error_log("[LTI AGS] Token obtained successfully");
 
         $this->access_tokens[$scope_key] = $token_data['access_token'];
         return $this->access_tokens[$scope_key];
@@ -106,11 +122,17 @@ class LTI_Service_Connector
         array|string|null $body = null,
         ?string $content_type = null
     ): array|false {
+        error_log("[LTI AGS] Service request: $method $url");
+
         // 1. Get access token
         $token = $this->get_access_token($scopes);
         if (!$token) {
-            error_log("[LTI AGS] Service request failed: could not obtain access token");
-            return false;
+            error_log("[LTI AGS] Service request ABORTED: could not obtain access token");
+            return [
+                'success' => false,
+                'http_code' => 0,
+                'error' => 'Could not obtain access token'
+            ];
         }
 
         // 2. Build headers
@@ -128,18 +150,24 @@ class LTI_Service_Connector
         curl_setopt($ch, CURLOPT_URL, $url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
 
+        $post_body = null;
         switch (strtoupper($method)) {
             case 'POST':
                 curl_setopt($ch, CURLOPT_POST, true);
                 if ($body) {
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, is_array($body) ? json_encode($body) : $body);
+                    $post_body = is_array($body) ? json_encode($body) : $body;
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $post_body);
                 }
                 break;
             case 'PUT':
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
                 if ($body) {
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, is_array($body) ? json_encode($body) : $body);
+                    $post_body = is_array($body) ? json_encode($body) : $body;
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $post_body);
                 }
                 break;
             case 'GET':
@@ -148,23 +176,38 @@ class LTI_Service_Connector
             default:
                 curl_setopt($ch, CURLOPT_CUSTOMREQUEST, strtoupper($method));
                 if ($body) {
-                    curl_setopt($ch, CURLOPT_POSTFIELDS, is_array($body) ? json_encode($body) : $body);
+                    $post_body = is_array($body) ? json_encode($body) : $body;
+                    curl_setopt($ch, CURLOPT_POSTFIELDS, $post_body);
                 }
                 break;
         }
 
+        if ($post_body) {
+            error_log("[LTI AGS] Request body: " . substr($post_body, 0, 500));
+        }
+
         // 4. Execute
         $response = curl_exec($ch);
+        $curl_errno = curl_errno($ch);
+        $curl_error = curl_error($ch);
         $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($response === false) {
-            error_log("[LTI AGS] Service request failed: " . curl_error($ch));
+
+        if ($response === false || $curl_errno !== 0) {
+            error_log("[LTI AGS] Service request CURL failed - Error #$curl_errno: $curl_error");
+            error_log("[LTI AGS] Service request URL was: $url");
+        }
+
+        error_log("[LTI AGS] Service response HTTP: $http_status");
+        if ($response && $http_status >= 400) {
+            error_log("[LTI AGS] Error response: " . substr($response, 0, 500));
         }
 
         curl_close($ch);
 
         return [
             'success' => ($http_status >= 200 && $http_status < 300),
-            'http_code' => $http_status
+            'http_code' => $http_status,
+            'curl_error' => $curl_error ?: null
         ];
     }
 }
