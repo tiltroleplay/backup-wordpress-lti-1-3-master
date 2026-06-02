@@ -124,10 +124,11 @@ class LTI_Message_Launch {
         $key_set_url = $this->registration->get_key_set_url();
 
         // Download key set
+        $user_agent = function_exists('get_lti_user_agent') ? \get_lti_user_agent() : 'WordPress-LTI-Tool/1.3';
         $options = [
             'http' => [
                 'method' => 'GET',
-                'header' => "User-Agent: WordPress-LTI-Tool/1.0 (Tilt Roleplay LTI Plugin; https://tiltroleplay.com)\r\n"
+                'header' => "User-Agent: $user_agent\r\n"
             ]
         ];
 

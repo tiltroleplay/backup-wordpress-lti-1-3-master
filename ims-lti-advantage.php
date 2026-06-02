@@ -112,7 +112,8 @@ function lti_handle_admin_action(string $action, string $client_id): array {
         case 'save-settings':
             lti_store_plugin_settings(
                 intval($_POST['show_gradebook_to_teachers'] ?? 0),
-                intval($_POST['show_sync_members_to_teachers'] ?? 0)
+                intval($_POST['show_sync_members_to_teachers'] ?? 0),
+                sanitize_text_field($_POST['lti_user_agent'] ?? '')
             );
             $result['notice'] = __('Settings saved.', 'wordpress-mu-ltiadvantage');
             break;
@@ -345,8 +346,9 @@ function lti_render_tools_table(array $rows): void {
 function lti_render_gradebook_settings(): void {
     $show_gradebook = get_lti_show_gradebook_to_teachers();
     $show_sync = get_lti_show_sync_members_to_teachers();
+    $user_agent = get_lti_user_agent();
     ?>
-    <h2><?php esc_html_e('Gradebook Configuration', 'wordpress-mu-ltiadvantage'); ?></h2>
+    <h2><?php esc_html_e('Plugin Settings', 'wordpress-mu-ltiadvantage'); ?></h2>
     <form method="post">
         <?php wp_nonce_field('lti'); ?>
         <input type="hidden" name="action" value="save-settings" />
@@ -368,6 +370,14 @@ function lti_render_gradebook_settings(): void {
                             <input type="checkbox" name="show_sync_members_to_teachers" value="1" <?php checked($show_sync, 1); ?> />
                             <?php esc_html_e('Enable', 'wordpress-mu-ltiadvantage'); ?>
                         </label>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="lti_user_agent"><?php esc_html_e('User-Agent String', 'wordpress-mu-ltiadvantage'); ?></label></th>
+                    <td>
+                        <input type="text" name="lti_user_agent" id="lti_user_agent" class="large-text"
+                               value="<?php echo esc_attr($user_agent); ?>" />
+                        <p class="description"><?php esc_html_e('Custom User-Agent header sent with LTI HTTP requests to the LMS.', 'wordpress-mu-ltiadvantage'); ?></p>
                     </td>
                 </tr>
             </tbody>
@@ -621,13 +631,19 @@ function lti_render_edit_form(?object $row = null): void {
 /**
  * Store plugin settings
  */
-function lti_store_plugin_settings(int $show_gradebook, int $show_sync): void {
+function lti_store_plugin_settings(int $show_gradebook, int $show_sync, string $user_agent = ''): void {
     if (is_multisite()) {
         update_site_option('lti_show_gradebook_to_teachers', $show_gradebook);
         update_site_option('lti_show_sync_members_to_teachers', $show_sync);
+        if ($user_agent !== '') {
+            update_site_option('lti_user_agent', $user_agent);
+        }
     } else {
         update_option('lti_show_gradebook_to_teachers', $show_gradebook);
         update_option('lti_show_sync_members_to_teachers', $show_sync);
+        if ($user_agent !== '') {
+            update_option('lti_user_agent', $user_agent);
+        }
     }
 }
 
@@ -641,6 +657,16 @@ function get_lti_show_sync_members_to_teachers(): int {
     return (int) (is_multisite()
         ? get_site_option('lti_show_sync_members_to_teachers', 1)
         : get_option('lti_show_sync_members_to_teachers', 1));
+}
+
+/**
+ * Get the custom User-Agent string for LTI HTTP requests
+ */
+function get_lti_user_agent(): string {
+    $default = 'WordPress-LTI-Tool/1.3 (3iPunt https://tresipunt.com)';
+    return (string) (is_multisite()
+        ? get_site_option('lti_user_agent', $default)
+        : get_option('lti_user_agent', $default));
 }
 
 function lti_generate_public_and_private_key(string $client_id): bool {

@@ -16,6 +16,14 @@ class LTI_Service_Connector
         $this->registration = $registration;
     }
 
+    /**
+     * Get the User-Agent string for HTTP requests
+     */
+    private function get_user_agent(): string
+    {
+        return function_exists('get_lti_user_agent') ? \get_lti_user_agent() : 'WordPress-LTI-Tool/1.3';
+    }
+
     public function get_access_token(array|string $scopes): string|false
     {
         // Defensive: ensure scopes is a flat array of strings
@@ -65,7 +73,7 @@ class LTI_Service_Connector
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_HTTPHEADER => [
                 'Content-Type: application/x-www-form-urlencoded',
-                'User-Agent: WordPress-LTI-Tool/1.0 (Tilt Roleplay LTI Plugin; https://tiltroleplay.com)',
+                'User-Agent: ' . $this->get_user_agent(),
                 'Accept: application/json'
             ]
         ]);
@@ -108,7 +116,7 @@ class LTI_Service_Connector
         // 2. Build headers
         $headers = [
             'Authorization: Bearer ' . $token,
-            'User-Agent: WordPress-LTI-Tool/1.0 (Tilt Roleplay LTI Plugin; https://tiltroleplay.com)'
+            'User-Agent: ' . $this->get_user_agent()
         ];
         if ($content_type) {
             $headers[] = 'Content-Type: ' . $content_type;
