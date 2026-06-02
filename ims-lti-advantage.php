@@ -254,36 +254,18 @@ function lti_render_copy_button(string $target_id): void {
 }
 
 /**
- * Render search section
+ * Render search section (search form hidden for now)
  */
 function lti_render_search_section(): void {
     global $wpdb;
 
-    $search_str = sanitize_text_field($_POST['search_txt'] ?? '');
-    $like_search = '%' . $wpdb->esc_like($search_str) . '%';
-    $rows = $wpdb->get_results($wpdb->prepare(
-        "SELECT * FROM " . lti_13_get_table() . " WHERE client_id LIKE %s",
-        $like_search
-    ));
+    // Get all tools (search disabled)
+    $rows = $wpdb->get_results("SELECT * FROM " . lti_13_get_table());
 
     ?>
     <h2><?php esc_html_e('Registered LTI Tools', 'wordpress-mu-ltiadvantage'); ?></h2>
 
-    <?php if (!empty($search_str)): ?>
-        <p><?php printf(esc_html__('Searching for "%s"', 'wordpress-mu-ltiadvantage'), esc_html($search_str)); ?></p>
-    <?php endif; ?>
-
     <?php lti_render_tools_table($rows); ?>
-
-    <form method="post" class="lti-search-form">
-        <?php wp_nonce_field('lti'); ?>
-        <input type="hidden" name="action" value="search" />
-        <p>
-            <label for="search_txt"><?php esc_html_e('Search:', 'wordpress-mu-ltiadvantage'); ?></label>
-            <input type="text" name="search_txt" id="search_txt" value="<?php echo esc_attr($search_str); ?>" class="regular-text" />
-            <?php submit_button(__('Search', 'wordpress-mu-ltiadvantage'), 'secondary', 'submit', false); ?>
-        </p>
-    </form>
     <?php
 }
 

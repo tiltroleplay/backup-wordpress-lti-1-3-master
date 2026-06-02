@@ -1,12 +1,14 @@
-# Technical Summary: WordPress LTI 1.3 Plugin Modifications
+# WordPress LTI 1.3 Plugin - Changelog
+
+**Fork of:** [3iPunt/wordpress-lti-1-3](https://github.com/3iPunt/wordpress-lti-1-3)
+**PHP Required:** 8.0+
+**Last Updated:** 2026-06-02
 
 ---
 
 ## Overview
 
 This document outlines all modifications made to the original `wordpress-lti-1-3` plugin by 3iPunt. The modified version addresses security vulnerabilities, upgrades dependencies for PHP 8.0+ compatibility, fixes a critical multi-tool registration bug, and refactors the admin interface to follow WordPress coding standards.
-
-**Original Repository:** https://github.com/3iPunt/wordpress-lti-1-3
 
 ---
 
@@ -96,6 +98,59 @@ public function find_registration_by_issuer_and_client_id(string $iss, string $c
 **Backward Compatibility:**
 - Legacy `find_registration_by_issuer()` method retained but marked `@deprecated`
 - OIDC login falls back to issuer-only lookup if `client_id` not provided
+
+### 3.2 Deployment Validation Fix
+
+**Problem:** Deployment validation also used issuer-only lookup, causing validation failures when multiple tools shared the same issuer.
+
+**Solution:**
+**Files Modified:**
+- `src/lti/Database.php` - Added `find_deployment_by_issuer_client_and_deployment()` interface method
+- `lti/wordpresslti_database.php` - Implemented composite key deployment lookup
+- `src/lti/LTI_Message_Launch.php` - Updated `validate_deployment()` to use new method
+
+```php
+// New deployment lookup using issuer + client_id + deployment_id
+public function find_deployment_by_issuer_client_and_deployment(
+    string $iss,
+    string $client_id,
+    string $deployment_id
+): ?LTI_Deployment
+```
+
+### 3.3 Fresh Registration for Service Calls
+
+**Problem:** LTI launch data (including registration with token URLs) was serialized and cached in WordPress user meta. When admin settings were updated (e.g., fixing a wrong token URL), the cached launch still used the old values, requiring users to re-launch from the LMS.
+
+**Solution:**
+**File:** `src/lti/LTI_Message_Launch.php`
+
+Added `get_fresh_registration()` method that fetches current registration from the database when making service calls (grades, NRPS, etc.), ensuring settings changes take effect immediately.
+
+```php
+private function get_fresh_registration(): ?LTI_Registration {
+    // Extract issuer and client_id from cached JWT
+    $issuer = $this->jwt['body']['iss'] ?? null;
+    $client_id = is_array($this->jwt['body']['aud'])
+        ? $this->jwt['body']['aud'][0]
+        : ($this->jwt['body']['aud'] ?? null);
+
+    // Load database class and fetch fresh registration
+    $db = new \WordPressLTI_Database();
+    return $db->find_registration_by_issuer_and_client_id($issuer, $client_id);
+}
+```
+
+**Updated methods to use fresh registration:**
+- `get_ags()` - Assignment and Grade Services
+- `get_nrps()` - Names and Roles Provisioning Service
+- `get_gs()` - Groups Service
+- `get_deep_link()` - Deep Linking
+
+**Benefits:**
+- Settings changes take effect immediately without re-launch
+- No need to clear user meta when fixing configuration errors
+- Cached JWT claims still available for user info and service endpoints
 
 ---
 
@@ -188,9 +243,9 @@ function get_lti_user_agent(): string {
 | `blogType/utils/UtilsPropertiesWP.php` | Removed eval(), fixed preg_replace |
 | `blogType/class-lti-grade-table.php` | XSS prevention in sorting |
 | `src/lti/Database.php` | New interface method |
-| `src/lti/LTI_Message_Launch.php` | Multi-tool lookup, User-Agent |
+| `src/lti/LTI_Message_Launch.php` | Multi-tool lookup, User-Agent, fresh registration fetch, deployment validation |
 | `src/lti/LTI_OIDC_Login.php` | Multi-tool support |
-| `src/lti/LTI_Service_Connector.php` | User-Agent setting |
+| `src/lti/LTI_Service_Connector.php` | User-Agent setting, enhanced debug logging for token/service requests |
 | `src/lti/JWKS_Endpoint.php` | Native OpenSSL, deprecation notices |
 
 ### Added Files
@@ -201,7 +256,28 @@ function get_lti_user_agent(): string {
 
 ---
 
-## 8. Compatibility Notes
+## 8. Enhanced Debug Logging
+
+**File:** `src/lti/LTI_Service_Connector.php`
+
+Added comprehensive logging for troubleshooting LTI service calls:
+
+```
+[LTI AGS] Requesting token from: {url}
+[LTI AGS] Client ID: {client_id}
+[LTI AGS] Scopes: {scopes}
+[LTI AGS] Token response HTTP: {status}
+[LTI AGS] Token obtained successfully
+[LTI AGS] Service request: {method} {url}
+[LTI AGS] Request body: {body}
+[LTI AGS] Service response HTTP: {status}
+```
+
+Errors are logged with cURL error codes and messages for easier debugging of SSL, DNS, and network issues.
+
+---
+
+## 9. Compatibility Notes
 
 ### Requirements
 - PHP 8.0 or higher
@@ -218,7 +294,7 @@ function get_lti_user_agent(): string {
 
 ---
 
-## 9. Upgrade Instructions
+## 10. Upgrade Instructions
 
 1. Backup existing plugin and database
 2. Replace plugin files with modified version
