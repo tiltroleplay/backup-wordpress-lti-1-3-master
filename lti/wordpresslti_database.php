@@ -70,6 +70,10 @@ class WordPressLTI_Database implements LTI\Database {
      * Build an LTI_Registration object from a tool record
      */
     private function build_registration(object $tool): LTI\LTI_Registration {
+        error_log("[LTI DB] Building registration for client_id={$tool->client_id}");
+        error_log("[LTI DB] auth_token_url from DB: {$tool->auth_token_url}");
+        error_log("[LTI DB] auth_login_url from DB: {$tool->auth_login_url}");
+
         return LTI\LTI_Registration::new()
             ->set_auth_login_url($tool->auth_login_url)
             ->set_auth_token_url($tool->auth_token_url)

@@ -69,7 +69,7 @@ class LTI_Message_Launch {
 
     public function get_nrps() {
         return new LTI_Names_Roles_Provisioning_Service(
-            new LTI_Service_Connector($this->registration),
+            new LTI_Service_Connector($this->get_fresh_registration()),
             $this->jwt['body']['https://purl.imsglobal.org/spec/lti-nrps/claim/namesroleservice']);
     }
 
@@ -79,7 +79,7 @@ class LTI_Message_Launch {
 
     public function get_gs() {
         return new LTI_Course_Groups_Service(
-            new LTI_Service_Connector($this->registration),
+            new LTI_Service_Connector($this->get_fresh_registration()),
             $this->jwt['body']['https://purl.imsglobal.org/spec/lti-gs/claim/groupsservice']);
     }
 
@@ -89,13 +89,13 @@ class LTI_Message_Launch {
 
     public function get_ags() {
         return new LTI_Assignments_Grades_Service(
-            new LTI_Service_Connector($this->registration),
+            new LTI_Service_Connector($this->get_fresh_registration()),
             $this->jwt['body']['https://purl.imsglobal.org/spec/lti-ags/claim/endpoint']);
     }
 
     public function get_deep_link() {
         return new LTI_Deep_Link(
-            $this->registration,
+            $this->get_fresh_registration(),
             $this->jwt['body']['https://purl.imsglobal.org/spec/lti/claim/deployment_id'],
             $this->jwt['body']['https://purl.imsglobal.org/spec/lti-dl/claim/deep_linking_settings']);
     }
@@ -118,6 +118,37 @@ class LTI_Message_Launch {
 
     public function get_launch_id() {
         return $this->launch_id;
+    }
+
+    /**
+     * Get fresh registration from database
+     * This ensures we always use current settings (token URL, etc.) even if
+     * the launch object was cached/serialized with old values
+     */
+    private function get_fresh_registration(): ?LTI_Registration {
+        $issuer = $this->jwt['body']['iss'] ?? null;
+        $client_id = is_array($this->jwt['body']['aud'])
+            ? $this->jwt['body']['aud'][0]
+            : ($this->jwt['body']['aud'] ?? null);
+
+        if (!$issuer || !$client_id) {
+            error_log("[LTI] Cannot get fresh registration: missing issuer or client_id");
+            return $this->registration; // Fallback to cached
+        }
+
+        // Create fresh database instance (needed because $this->db may be null after unserialization)
+        if (class_exists('WordPressLTI_Database')) {
+            $db = new \WordPressLTI_Database();
+            $fresh_registration = $db->find_registration_by_issuer_and_client_id($issuer, $client_id);
+
+            if ($fresh_registration) {
+                error_log("[LTI] Using fresh registration for client_id=$client_id");
+                return $fresh_registration;
+            }
+        }
+
+        error_log("[LTI] Fresh registration lookup failed, using cached registration");
+        return $this->registration; // Fallback to cached
     }
 
     private function get_public_key() {
