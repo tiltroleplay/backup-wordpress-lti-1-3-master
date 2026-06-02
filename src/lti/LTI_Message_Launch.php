@@ -242,10 +242,16 @@ class LTI_Message_Launch {
     }
 
     private function validate_deployment() {
-        $deployment = $this->db->find_deployment($this->jwt['body']['iss'], $this->jwt['body']['https://purl.imsglobal.org/spec/lti/claim/deployment_id']);
+        $issuer = $this->jwt['body']['iss'];
+        $client_id = $this->registration->get_client_id();
+        $deployment_id = $this->jwt['body']['https://purl.imsglobal.org/spec/lti/claim/deployment_id'];
+
+        // Use the new method that properly handles multiple tools from same issuer
+        $deployment = $this->db->find_deployment_by_issuer_client_and_deployment($issuer, $client_id, $deployment_id);
 
         if (empty($deployment)) {
-            throw new LTI_Exception("Unable to find deployment", 1);
+            error_log("[LTI] Deployment validation failed: issuer=$issuer, client_id=$client_id, deployment_id=$deployment_id");
+            throw new LTI_Exception("Unable to find deployment (issuer=$issuer, deployment_id=$deployment_id)", 1);
         }
 
         return $this;

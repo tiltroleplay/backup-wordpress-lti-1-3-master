@@ -82,6 +82,7 @@ class WordPressLTI_Database implements LTI\Database {
 
     /**
      * Find deployment by issuer and deployment_id
+     * @deprecated Use find_deployment_by_issuer_client_and_deployment instead
      */
     public function find_deployment(string $iss, string $deployment_id): ?LTI\LTI_Deployment {
         // Try to find by issuer first
@@ -103,6 +104,32 @@ class WordPressLTI_Database implements LTI\Database {
 
         $deployments_ids = array_map('trim', explode(',', $tool->deployments_ids ?? ''));
         if (!in_array($deployment_id, $deployments_ids)) {
+            return null;
+        }
+
+        return LTI\LTI_Deployment::new()
+            ->set_deployment_id($deployment_id);
+    }
+
+    /**
+     * Find deployment by issuer, client_id, and deployment_id (preferred method)
+     * This properly handles multiple tools from the same LMS/issuer
+     */
+    public function find_deployment_by_issuer_client_and_deployment(string $iss, string $client_id, string $deployment_id): ?LTI\LTI_Deployment {
+        // Look up the specific tool by composite key
+        $composite_key = $iss . '|' . $client_id;
+        $tool = $this->tools_by_issuer_client[$composite_key] ?? null;
+
+        if (!$tool) {
+            error_log("[LTI] find_deployment: Tool not found for issuer=$iss, client_id=$client_id");
+            return null;
+        }
+
+        $deployments_ids = array_map('trim', explode(',', $tool->deployments_ids ?? ''));
+        error_log("[LTI] find_deployment: Looking for deployment_id=$deployment_id in [" . implode(', ', $deployments_ids) . "]");
+
+        if (!in_array($deployment_id, $deployments_ids)) {
+            error_log("[LTI] find_deployment: deployment_id=$deployment_id NOT found in tool's deployments");
             return null;
         }
 

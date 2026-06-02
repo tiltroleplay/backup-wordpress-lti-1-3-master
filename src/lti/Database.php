@@ -15,8 +15,14 @@ interface Database {
 
     /**
      * Find deployment by issuer and deployment_id
+     * @deprecated Use find_deployment_by_issuer_client_and_deployment instead
      */
     public function find_deployment(string $iss, string $deployment_id): ?LTI_Deployment;
+
+    /**
+     * Find deployment by issuer, client_id, and deployment_id (preferred method)
+     */
+    public function find_deployment_by_issuer_client_and_deployment(string $iss, string $client_id, string $deployment_id): ?LTI_Deployment;
 }
 
 ?>
