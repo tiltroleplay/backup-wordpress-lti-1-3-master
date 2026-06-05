@@ -12,6 +12,9 @@ class WordPressLTI_Database implements LTI\Database {
     /** @var array All tools indexed by client_id */
     private array $tools_by_client_id = [];
 
+    /** @var array All tools indexed by deployment_id */
+    private array $tools_by_deployment_id = [];
+
     public function __construct() {
         $enabled_tools = lti_13_get_tools_with_priv_key();
         if ($enabled_tools) {
@@ -25,6 +28,14 @@ class WordPressLTI_Database implements LTI\Database {
 
                 // Store by client_id for direct lookup
                 $this->tools_by_client_id[$tool->client_id] = $tool;
+
+                // Store by deployment_id for direct lookup
+                $deployment_ids = array_map('trim', explode(',', $tool->deployments_ids ?? ''));
+                foreach ($deployment_ids as $dep_id) {
+                    if (!empty($dep_id)) {
+                        $this->tools_by_deployment_id[$dep_id] = $tool;
+                    }
+                }
             }
         }
     }
@@ -64,6 +75,53 @@ class WordPressLTI_Database implements LTI\Database {
         }
 
         return null;
+    }
+
+    /**
+     * Find registration by client_id only (fallback when issuer is missing)
+     * Uses the issuer stored in the tool configuration
+     */
+    public function find_registration_by_client_id(string $client_id): ?LTI\LTI_Registration {
+        if (!empty($this->tools_by_client_id[$client_id])) {
+            $tool = $this->tools_by_client_id[$client_id];
+            error_log("[LTI DB] Fallback: Found registration by client_id={$client_id}, using stored issuer={$tool->issuer}");
+            return $this->build_registration($tool);
+        }
+        error_log("[LTI DB] Fallback: No registration found for client_id={$client_id}");
+        return null;
+    }
+
+    /**
+     * Find registration by deployment_id only (fallback when issuer is missing)
+     * Uses the issuer stored in the tool configuration
+     */
+    public function find_registration_by_deployment_id(string $deployment_id): ?LTI\LTI_Registration {
+        if (!empty($this->tools_by_deployment_id[$deployment_id])) {
+            $tool = $this->tools_by_deployment_id[$deployment_id];
+            error_log("[LTI DB] Fallback: Found registration by deployment_id={$deployment_id}, using stored issuer={$tool->issuer}");
+            return $this->build_registration($tool);
+        }
+        error_log("[LTI DB] Fallback: No registration found for deployment_id={$deployment_id}");
+        return null;
+    }
+
+    /**
+     * Find registration by client_id and deployment_id (fallback when issuer is missing)
+     * Uses the issuer stored in the tool configuration
+     */
+    public function find_registration_by_client_and_deployment(string $client_id, string $deployment_id): ?LTI\LTI_Registration {
+        // First try to find by client_id
+        if (!empty($this->tools_by_client_id[$client_id])) {
+            $tool = $this->tools_by_client_id[$client_id];
+            // Verify this tool has the deployment_id
+            $deployment_ids = array_map('trim', explode(',', $tool->deployments_ids ?? ''));
+            if (in_array($deployment_id, $deployment_ids)) {
+                error_log("[LTI DB] Fallback: Found registration by client_id={$client_id} + deployment_id={$deployment_id}");
+                return $this->build_registration($tool);
+            }
+        }
+        // Fallback to deployment_id only
+        return $this->find_registration_by_deployment_id($deployment_id);
     }
 
     /**

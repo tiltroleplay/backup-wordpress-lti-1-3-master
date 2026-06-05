@@ -97,27 +97,52 @@ class LTI_OIDC_Login {
 
     protected function validate_oidc_login($request) {
 
-        // Validate Issuer.
-        if (empty($request['iss'])) {
-            throw new OIDC_Exception("Could not find issuer", 1);
-        }
-
         // Validate Login Hint.
         if (empty($request['login_hint'])) {
             throw new OIDC_Exception("Could not find login hint", 1);
         }
 
         // Fetch Registration Details.
-        // Per LTI 1.3 spec, client_id may be included in OIDC initiation request
-        // when multiple tools are registered with the same issuer
-        if (!empty($request['client_id'])) {
-            $registration = $this->db->find_registration_by_issuer_and_client_id(
-                $request['iss'],
-                $request['client_id']
-            );
+        $registration = null;
+
+        if (!empty($request['iss'])) {
+            // Standard flow: issuer is provided
+            if (!empty($request['client_id'])) {
+                // Per LTI 1.3 spec, client_id may be included in OIDC initiation request
+                // when multiple tools are registered with the same issuer
+                $registration = $this->db->find_registration_by_issuer_and_client_id(
+                    $request['iss'],
+                    $request['client_id']
+                );
+            } else {
+                // Fallback to issuer-only lookup for backwards compatibility
+                $registration = $this->db->find_registration_by_issuer($request['iss']);
+            }
+        } elseif (!empty($request['client_id'])) {
+            // Fallback: issuer missing but client_id present
+            error_log("[LTI] Warning: issuer (iss) missing from OIDC request, attempting fallback");
+
+            // Try client_id + deployment_id first (most specific)
+            if (!empty($request['lti_deployment_id']) && method_exists($this->db, 'find_registration_by_client_and_deployment')) {
+                error_log("[LTI] Trying fallback by client_id + deployment_id");
+                $registration = $this->db->find_registration_by_client_and_deployment(
+                    $request['client_id'],
+                    $request['lti_deployment_id']
+                );
+            }
+
+            // If not found, try client_id only
+            if (empty($registration)) {
+                error_log("[LTI] Trying fallback by client_id only");
+                $registration = $this->db->find_registration_by_client_id($request['client_id']);
+            }
+        } elseif (!empty($request['lti_deployment_id']) && method_exists($this->db, 'find_registration_by_deployment_id')) {
+            // Last resort: try deployment_id only
+            error_log("[LTI] Warning: issuer and client_id missing, attempting fallback by deployment_id");
+            $registration = $this->db->find_registration_by_deployment_id($request['lti_deployment_id']);
         } else {
-            // Fallback to issuer-only lookup for backwards compatibility
-            $registration = $this->db->find_registration_by_issuer($request['iss']);
+            // No identifying parameters provided
+            throw new OIDC_Exception("Could not find issuer, client_id, or deployment_id", 1);
         }
 
         // Check we got something.
