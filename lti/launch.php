@@ -12,6 +12,12 @@ require_once ABSPATH . '/wp-settings.php';
 
 use \IMSGlobal\LTI;
 
+// Debug: Log launch request
+error_log("[LTI LAUNCH] ========== MESSAGE LAUNCH ==========");
+error_log("[LTI LAUNCH] Request Method: " . $_SERVER['REQUEST_METHOD']);
+error_log("[LTI LAUNCH] Request URI: " . ($_SERVER['REQUEST_URI'] ?? 'not set'));
+error_log("[LTI LAUNCH] \$_POST keys: " . implode(', ', array_keys($_POST)));
+
 try {
     $launch = LTI\LTI_Message_Launch::new(new WordPressLTI_Database())
         ->validate();
@@ -19,6 +25,12 @@ try {
     error_log("[LTI] Launch validation failed: " . $e->getMessage());
     throw $e;
 }
+
+// Debug: Log launch data after validation
+$debug_data = $launch->get_launch_data();
+error_log("[LTI LAUNCH] Issuer: " . ($debug_data['iss'] ?? 'not set'));
+error_log("[LTI LAUNCH] Client ID: " . ($debug_data['aud'] ?? 'not set'));
+error_log("[LTI LAUNCH] Custom params: " . print_r($debug_data['https://purl.imsglobal.org/spec/lti/claim/custom'] ?? [], true));
 
 if ($launch->is_deep_link_launch()) {
     // TODO prepare Deeplink flow
@@ -215,11 +227,19 @@ function parse_launch_lti_13($client_id, LTI\LTI_Message_Launch $launch)
     add_user_meta($user->ID, 'lti_launch_' . $blog_id, $launch);
 
 
-    if ($redirecturl = $blogType->force_redirect_to_url( $custom_params )) {
+    // Debug: Log redirect decision
+    error_log("[LTI LAUNCH] About to determine redirect URL");
+    error_log("[LTI LAUNCH] custom_params for redirect: " . print_r($custom_params, true));
+
+    if ($redirecturl = $blogType->force_redirect_to_url($custom_params)) {
+        error_log("[LTI LAUNCH] Redirecting to custom URL: " . $redirecturl);
         wp_redirect($redirecturl);
         exit();
     }
-    wp_redirect(get_home_url($blog_id));
+
+    $home_url = get_home_url($blog_id);
+    error_log("[LTI LAUNCH] No custom URL found, redirecting to homepage: " . $home_url);
+    wp_redirect($home_url);
     exit();
 
     /**    $redirecturl = get_option("siteurl");
