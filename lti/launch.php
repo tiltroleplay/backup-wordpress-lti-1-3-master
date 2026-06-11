@@ -355,6 +355,17 @@ function parse_launch_lti_13($client_id, LTI\LTI_Message_Launch $launch)
         exit();
     }
 
+    // Check for fallback redirect slug when custom params are missing
+    $lti_client = LTIUtils::lti_get_by_client_id($client_id);
+    if ($lti_client && !empty($lti_client->fallback_redirect_slug)) {
+        $fallback_url = get_home_url($blog_id) . '/' . ltrim($lti_client->fallback_redirect_slug, '/');
+        if ($LTI_DEBUG_ENABLED) {
+            error_log("[{$lti_debug_id}] Custom params missing - using fallback redirect: " . $fallback_url);
+        }
+        wp_redirect($fallback_url);
+        exit();
+    }
+
     $home_url = get_home_url($blog_id);
     if ($LTI_DEBUG_ENABLED) {
         error_log("[{$lti_debug_id}] Redirecting to homepage: " . $home_url);

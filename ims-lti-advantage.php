@@ -140,6 +140,7 @@ function lti_save_tool(string $client_id): string {
         'grade_column_name' => sanitize_text_field($_POST['grade_column_name'] ?? ''),
         'student_role' => sanitize_key($_POST['student_role'] ?? 'subscriber'),
         'deployments_ids' => sanitize_text_field($_POST['deployments_ids'] ?? ''),
+        'fallback_redirect_slug' => sanitize_text_field($_POST['fallback_redirect_slug'] ?? ''),
     ];
 
     $existing = $wpdb->get_row($wpdb->prepare(
@@ -490,6 +491,7 @@ function lti_render_edit_form(?object $row = null): void {
             'custom_username_parameter' => '',
             'public_key' => '',
             'deployments_ids' => '',
+            'fallback_redirect_slug' => '',
         ];
     }
 
@@ -544,6 +546,14 @@ function lti_render_edit_form(?object $row = null): void {
                         <input type="text" name="deployments_ids" id="deployments_ids" class="regular-text"
                                value="<?php echo esc_attr($row->deployments_ids); ?>" />
                         <p class="description"><?php esc_html_e('Comma separated list of deployment IDs', 'wordpress-mu-ltiadvantage'); ?></p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="fallback_redirect_slug"><?php esc_html_e('Fallback Redirect Slug', 'wordpress-mu-ltiadvantage'); ?></label></th>
+                    <td>
+                        <input type="text" name="fallback_redirect_slug" id="fallback_redirect_slug" class="regular-text"
+                               value="<?php echo esc_attr($row->fallback_redirect_slug ?? ''); ?>" />
+                        <p class="description"><?php esc_html_e('Page slug to redirect to if custom parameters are missing (e.g., swansea-university-english-version-game). Used as fallback when institutional proxy strips LTI custom params.', 'wordpress-mu-ltiadvantage'); ?></p>
                     </td>
                 </tr>
                 <tr>
@@ -763,6 +773,7 @@ function lti_maybe_create_db(): void {
                 grade_column_tag varchar(255) default '',
                 grade_column_name varchar(255) default '',
                 student_role varchar(30) default 'subscriber',
+                fallback_redirect_slug varchar(255) DEFAULT NULL,
                 created datetime NOT NULL,
                 updated datetime NOT NULL,
                 PRIMARY KEY (client_id)
@@ -776,6 +787,18 @@ function lti_maybe_create_db(): void {
             ) $charset_collate");
 
             $created = true;
+        }
+
+        // Migration: Add fallback_redirect_slug column if it doesn't exist
+        $table_name = lti_13_get_table();
+        $column_exists = $wpdb->get_results($wpdb->prepare(
+            "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s AND COLUMN_NAME = 'fallback_redirect_slug'",
+            DB_NAME,
+            $table_name
+        ));
+
+        if (empty($column_exists)) {
+            $wpdb->query("ALTER TABLE `{$table_name}` ADD COLUMN fallback_redirect_slug varchar(255) DEFAULT NULL");
         }
 
         if ($created) {
