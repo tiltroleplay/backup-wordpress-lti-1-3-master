@@ -12,25 +12,104 @@ require_once ABSPATH . '/wp-settings.php';
 
 use \IMSGlobal\LTI;
 
-// Debug: Log launch request
-error_log("[LTI LAUNCH] ========== MESSAGE LAUNCH ==========");
-error_log("[LTI LAUNCH] Request Method: " . $_SERVER['REQUEST_METHOD']);
-error_log("[LTI LAUNCH] Request URI: " . ($_SERVER['REQUEST_URI'] ?? 'not set'));
-error_log("[LTI LAUNCH] \$_POST keys: " . implode(', ', array_keys($_POST)));
+// ============================================================================
+// LTI DEBUG TOGGLE - Set to true to enable detailed logging
+// ============================================================================
+$LTI_DEBUG_ENABLED = true;
+
+if ($LTI_DEBUG_ENABLED) {
+    $lti_debug_id = uniqid('LAUNCH_');
+
+    error_log("[{$lti_debug_id}] ==========================================");
+    error_log("[{$lti_debug_id}] LTI LAUNCH.PHP - " . date('Y-m-d H:i:s'));
+    error_log("[{$lti_debug_id}] ==========================================");
+
+    // HTTP Request Details
+    error_log("[{$lti_debug_id}] REQUEST_METHOD: " . ($_SERVER['REQUEST_METHOD'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] REQUEST_URI: " . ($_SERVER['REQUEST_URI'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] CONTENT_TYPE: " . ($_SERVER['CONTENT_TYPE'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] CONTENT_LENGTH: " . ($_SERVER['CONTENT_LENGTH'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] HTTP_HOST: " . ($_SERVER['HTTP_HOST'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] HTTPS: " . (isset($_SERVER['HTTPS']) ? $_SERVER['HTTPS'] : 'NOT SET'));
+    error_log("[{$lti_debug_id}] HTTP_REFERER: " . ($_SERVER['HTTP_REFERER'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] HTTP_USER_AGENT: " . ($_SERVER['HTTP_USER_AGENT'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] REMOTE_ADDR: " . ($_SERVER['REMOTE_ADDR'] ?? 'NOT SET'));
+
+    // Proxy/Network Headers (for diagnosing institutional proxy issues)
+    error_log("[{$lti_debug_id}] --- PROXY/NETWORK HEADERS ---");
+    error_log("[{$lti_debug_id}] X-Forwarded-For: " . ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] X-Forwarded-Proto: " . ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] X-Forwarded-Host: " . ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] X-Real-IP: " . ($_SERVER['HTTP_X_REAL_IP'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] Via: " . ($_SERVER['HTTP_VIA'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] HTTP_CONNECTION: " . ($_SERVER['HTTP_CONNECTION'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] HTTP_CACHE_CONTROL: " . ($_SERVER['HTTP_CACHE_CONTROL'] ?? 'NOT SET'));
+    error_log("[{$lti_debug_id}] SERVER_PROTOCOL: " . ($_SERVER['SERVER_PROTOCOL'] ?? 'NOT SET'));
+
+    // Raw POST data check
+    $raw_input = file_get_contents('php://input');
+    error_log("[{$lti_debug_id}] Raw php://input length: " . strlen($raw_input));
+    error_log("[{$lti_debug_id}] \$_POST count: " . count($_POST));
+    error_log("[{$lti_debug_id}] \$_GET count: " . count($_GET));
+
+    // State and Token
+    error_log("[{$lti_debug_id}] --- LAUNCH PARAMETERS ---");
+    error_log("[{$lti_debug_id}] state (GET): " . ($_GET['state'] ?? 'MISSING'));
+    error_log("[{$lti_debug_id}] state (POST): " . ($_POST['state'] ?? 'MISSING'));
+    error_log("[{$lti_debug_id}] id_token present: " . (isset($_POST['id_token']) ? 'YES (' . strlen($_POST['id_token']) . ' chars)' : 'NO'));
+
+    // Cookie State - Critical for validation
+    error_log("[{$lti_debug_id}] --- COOKIES ---");
+    error_log("[{$lti_debug_id}] Total cookies: " . count($_COOKIE));
+    $state_cookies = array_filter(array_keys($_COOKIE), function($k) { return strpos($k, 'lti1p3_') === 0; });
+    if (!empty($state_cookies)) {
+        foreach ($state_cookies as $cookie_name) {
+            error_log("[{$lti_debug_id}] Cookie '{$cookie_name}': " . $_COOKIE[$cookie_name]);
+        }
+    } else {
+        error_log("[{$lti_debug_id}] !!! NO LTI STATE COOKIES - will cause validation failure");
+    }
+
+    // Diagnostic Checks
+    error_log("[{$lti_debug_id}] --- DIAGNOSTICS ---");
+    $request_state = $_POST['state'] ?? $_GET['state'] ?? null;
+    $issues = [];
+    if (empty($request_state)) $issues[] = "No state parameter";
+    if (empty($state_cookies)) $issues[] = "No LTI cookies - browser may block cross-site cookies";
+    if (!empty($request_state) && !isset($_COOKIE["lti1p3_{$request_state}"])) {
+        $issues[] = "State mismatch - cookie 'lti1p3_{$request_state}' not found";
+    }
+    if (empty($_POST['id_token'])) $issues[] = "No id_token in POST";
+
+    if (!empty($issues)) {
+        error_log("[{$lti_debug_id}] !!! ISSUES: " . implode(', ', $issues));
+    } else {
+        error_log("[{$lti_debug_id}] Preliminary checks passed");
+    }
+}
 
 try {
     $launch = LTI\LTI_Message_Launch::new(new WordPressLTI_Database())
         ->validate();
+    if ($LTI_DEBUG_ENABLED) {
+        error_log("[{$lti_debug_id}] Validation SUCCESSFUL");
+    }
 } catch (Exception $e) {
     error_log("[LTI] Launch validation failed: " . $e->getMessage());
+    if ($LTI_DEBUG_ENABLED) {
+        error_log("[{$lti_debug_id}] !!! VALIDATION FAILED: " . $e->getMessage());
+        error_log("[{$lti_debug_id}] Trace: " . $e->getTraceAsString());
+    }
     throw $e;
 }
 
-// Debug: Log launch data after validation
-$debug_data = $launch->get_launch_data();
-error_log("[LTI LAUNCH] Issuer: " . ($debug_data['iss'] ?? 'not set'));
-error_log("[LTI LAUNCH] Client ID: " . ($debug_data['aud'] ?? 'not set'));
-error_log("[LTI LAUNCH] Custom params: " . print_r($debug_data['https://purl.imsglobal.org/spec/lti/claim/custom'] ?? [], true));
+// Log launch data after validation
+if ($LTI_DEBUG_ENABLED) {
+    $debug_data = $launch->get_launch_data();
+    error_log("[{$lti_debug_id}] Issuer: " . ($debug_data['iss'] ?? 'not set'));
+    error_log("[{$lti_debug_id}] Client ID: " . ($debug_data['aud'] ?? 'not set'));
+    error_log("[{$lti_debug_id}] User sub: " . ($debug_data['sub'] ?? 'not set'));
+}
 
 if ($launch->is_deep_link_launch()) {
     // TODO prepare Deeplink flow
@@ -43,6 +122,9 @@ parse_launch_lti_13($client_id, $launch);
 
 function parse_launch_lti_13($client_id, LTI\LTI_Message_Launch $launch)
 {
+    // Access global debug settings
+    global $LTI_DEBUG_ENABLED, $lti_debug_id;
+
     try {
 
         //deactivate_plugins( $plugin, true );
@@ -53,6 +135,12 @@ function parse_launch_lti_13($client_id, LTI\LTI_Message_Launch $launch)
         $lti_user_id = $lti_data['sub'];
         $custom_params = $lti_data['https://purl.imsglobal.org/spec/lti/claim/custom'] ?? [];
         $blogType = new blogTypeLoader(isset($custom_params['blogtype']) ? $custom_params['blogtype'] : 'defaultType');
+
+        if ($LTI_DEBUG_ENABLED) {
+            error_log("[{$lti_debug_id}] --- PARSING LAUNCH ---");
+            error_log("[{$lti_debug_id}] BlogType: " . ($custom_params['blogtype'] ?? 'defaultType'));
+            error_log("[{$lti_debug_id}] LTI User ID: " . $lti_user_id);
+        }
 
         if ($blogType->error < 0) {
 
@@ -104,6 +192,9 @@ function parse_launch_lti_13($client_id, LTI\LTI_Message_Launch $launch)
                 wp_die('<p>' . $ret_id->get_error_message() . '</p>',
                     __('User updating Failure', 'wordpress-mu-ltiadvantage'));
             }
+            if ($LTI_DEBUG_ENABLED) {
+                error_log("[{$lti_debug_id}] User UPDATED: {$userkey} (ID: {$uinfo->ID})");
+            }
         } else { // new user!!!!
             $user_data['user_pass'] = wp_generate_password(10, true, true);
             $ret_id = wp_insert_user($user_data);
@@ -113,6 +204,9 @@ function parse_launch_lti_13($client_id, LTI\LTI_Message_Launch $launch)
             }
             $uinfo = get_user_by('login', $userkey);
             $created_user = true;
+            if ($LTI_DEBUG_ENABLED) {
+                error_log("[{$lti_debug_id}] User CREATED: {$userkey} (ID: {$uinfo->ID})");
+            }
         }
 
         update_user_meta($uinfo->ID, LTIAdvantageManagement::$LTI_METAKEY_USER_ID, $lti_user_id);
@@ -160,9 +254,19 @@ function parse_launch_lti_13($client_id, LTI\LTI_Message_Launch $launch)
                 update_site_option('WPLANG', $old_site_language);
 
                 $blog_created = true;
+                if ($LTI_DEBUG_ENABLED) {
+                    error_log("[{$lti_debug_id}] Blog CREATED: {$domain}{$path} (ID: {$blog_id})");
+                }
+            } else {
+                if ($LTI_DEBUG_ENABLED) {
+                    error_log("[{$lti_debug_id}] Blog EXISTS: {$domain}{$path} (ID: {$blog_id})");
+                }
             }
         } else {
             $blog_id = get_current_blog_id();
+            if ($LTI_DEBUG_ENABLED) {
+                error_log("[{$lti_debug_id}] Single site mode, Blog ID: {$blog_id}");
+            }
         }
         update_option('lti_clientid', $client_id);
         update_option('lti_issuer', $lti_data['iss']);
@@ -200,14 +304,27 @@ function parse_launch_lti_13($client_id, LTI\LTI_Message_Launch $launch)
                 } else {
                     wp_update_user(array('ID' => $uinfo->ID, 'role' => $obj->role));
                 }
-
+                if ($LTI_DEBUG_ENABLED) {
+                    error_log("[{$lti_debug_id}] Role ASSIGNED: {$obj->role} (from LTI)");
+                }
             } else {
                 $obj->role = $old_role;
+                if ($LTI_DEBUG_ENABLED) {
+                    error_log("[{$lti_debug_id}] Role KEPT: {$obj->role} (existing)");
+                }
             }
             $blogType->postActions($obj);
         }
+
+        // Log successful completion
+        if ($LTI_DEBUG_ENABLED) {
+            error_log("[{$lti_debug_id}] --- LAUNCH PROCESSING COMPLETE ---");
+        }
     } catch (Exception $e) {
         error_log("Error exception " . $e->getMessage());
+        if ($LTI_DEBUG_ENABLED) {
+            error_log("[{$lti_debug_id}] !!! EXCEPTION in parse_launch: " . $e->getMessage());
+        }
     } finally {
         //error_reporting(E_ALL);
         //error_log("activate_plugin $plugin");
@@ -226,19 +343,22 @@ function parse_launch_lti_13($client_id, LTI\LTI_Message_Launch $launch)
 
     add_user_meta($user->ID, 'lti_launch_' . $blog_id, $launch);
 
-
-    // Debug: Log redirect decision
-    error_log("[LTI LAUNCH] About to determine redirect URL");
-    error_log("[LTI LAUNCH] custom_params for redirect: " . print_r($custom_params, true));
+    if ($LTI_DEBUG_ENABLED) {
+        error_log("[{$lti_debug_id}] User SIGNED IN: {$userkey} (ID: {$user->ID})");
+    }
 
     if ($redirecturl = $blogType->force_redirect_to_url($custom_params)) {
-        error_log("[LTI LAUNCH] Redirecting to custom URL: " . $redirecturl);
+        if ($LTI_DEBUG_ENABLED) {
+            error_log("[{$lti_debug_id}] Redirecting to custom URL: " . $redirecturl);
+        }
         wp_redirect($redirecturl);
         exit();
     }
 
     $home_url = get_home_url($blog_id);
-    error_log("[LTI LAUNCH] No custom URL found, redirecting to homepage: " . $home_url);
+    if ($LTI_DEBUG_ENABLED) {
+        error_log("[{$lti_debug_id}] Redirecting to homepage: " . $home_url);
+    }
     wp_redirect($home_url);
     exit();
 
